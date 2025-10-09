@@ -1,0 +1,11 @@
+# Об'єктні файли
+*.o
+
+# Згенеровані файли Flex та Bison
+lex.yy.c
+cpp_parser.tab.c
+cpp_parser.tab.h
+cpp_parser.tab.hpp
+
+# Виконавчі файли (parser)
+parser

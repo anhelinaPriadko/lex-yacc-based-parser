@@ -1,10 +1,11 @@
-﻿#include <iostream>
+#include <iostream>
 #include <fstream>
 #include "ast.h"
 
 
 extern int yyparse();
 extern ASTNode* ast_root;
+extern FILE* yyin;
 
 
 int main(int argc, char** argv) {

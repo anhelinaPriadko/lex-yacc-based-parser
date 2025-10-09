@@ -1,0 +1,37 @@
+{ "type": "Block", "stmts": [
+    { "type": "VarDeclList", "base": "int", "decls": [
+        { "type": "VarDecl", "id": "x", "init": 
+            { "type": "Number", "value": 5 } }
+    ] },
+    { "type": "VarDeclList", "base": "double", "decls": [
+        { "type": "VarDecl", "id": "y", "init": 
+            { "type": "Number", "value": 3.14 } }
+    ] },
+    { "type": "FunctionDecl", "name": "sum", "ret": "int", "params": [
+        { "type": "ParamDecl", "id": "a", "decltype": "int" },
+        { "type": "ParamDecl", "id": "b", "decltype": "int" }
+    ], "body":
+        { "type": "Block", "stmts": [
+            { "type": "Return", "expr":
+                { "type": "Binary", "op": "+",
+                  "left":
+                    { "type": "Var", "name": "a" },
+                  "right":
+                    { "type": "Var", "name": "b" }
+                } }
+        ] } },
+    { "type": "FunctionDecl", "name": "main", "ret": "int", "params": [
+    ], "body":
+        { "type": "Block", "stmts": [
+            { "type": "VarDeclList", "base": "int", "decls": [
+                { "type": "VarDecl", "id": "z", "init": 
+                    { "type": "Call", "callee":
+                        { "type": "Var", "name": "sum" },
+                      "args": [
+                        { "type": "Var", "name": "x" },
+                        { "type": "Number", "value": 10 }
+                      ]
+                    } }
+            ] }
+        ] } }
+] }

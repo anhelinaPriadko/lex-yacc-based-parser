@@ -13,7 +13,7 @@ STRING  \"([^\\\"]|\\.)*\"
 
 {WS}                 { /* skip whitespace */ }
 "//".*               { /* line comment */ }
-"/*"([^*]|\*+[^*/])*\*+ "/"   { /* block comment */ }
+\/\*([^*]|\*+[^*/])*\*+\/   { /* block comment */ }
 
 "int"                { return T_INT; }
 "double"             { return T_DOUBLE; }

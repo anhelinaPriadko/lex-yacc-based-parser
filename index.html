@@ -1,84 +1,96 @@
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>AST Visualization (d3)</title>
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <style>
-    body { font-family: sans-serif; }
-    .node circle { fill: #fff; stroke: steelblue; stroke-width: 2px; }
-    .node text { font: 12px sans-serif; }
-    .link { fill: none; stroke: #ccc; stroke-width: 1.5px; }
-  </style>
+<meta charset="utf-8">
+<title>AST Visualization (d3)</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  body { font-family: serif; }
+  #chart { width: 100%; height: 90vh; overflow: auto; border: 1px solid #ccc; }
+  .node circle { fill: #fff; stroke: steelblue; stroke-width: 2px; }
+  .node text { font: 12px sans-serif; }
+  .link { fill: none; stroke: #ccc; stroke-width: 1.5px; }
+</style>
 </head>
 <body>
 <h2>AST Visualization</h2>
-<p>If the file <code>ast.json</code> is next to this page, it will be loaded automatically.</p>
 <div id="chart"></div>
 
 <script>
-fetch('ast.json').then(r=>r.json()).then(data=>{
-  // convert our JSON node to d3 hierarchy
+fetch('ast.json').then(r => r.json()).then(data => {
+  // Функція для перетворення JSON-даних у структуру, яку розуміє D3.js
   function toTree(node) {
-    // if node has "left"/"right"/"expr"/"cond"/"then"/"else"/"stmts" etc., create children accordingly
     const children = [];
     for (let key of Object.keys(node)) {
       if (key === "type") continue;
       const val = node[key];
-      if (Array.isArray(val)) {
-        val.forEach((c,i)=>children.push({name: key + "["+i+"]", child: c}));
-      } else if (typeof val === "object" && val !== null) {
-        children.push({name: key, child: val});
-      } else {
-        children.push({name: key + ": " + String(val)});
-      }
+      // Обробка масивів, щоб кожен елемент став окремим вузлом
+      if (Array.isArray(val)) val.forEach((c,i) => children.push({name:key+"["+i+"]",child:c}));
+      // Обробка вкладених об'єктів
+      else if (typeof val==="object" && val!==null) children.push({name:key,child:val});
+      // Обробка простих значень (строки, числа тощо)
+      else children.push({name:key+": "+String(val)});
     }
-    const res = {name: node.type, children: children.map(x=> {
-      if (x.child) return toTree(x.child);
-      else return {name: x.name};
-    })};
-    return res;
+    return {name: node.type, children: children.map(x=>x.child?toTree(x.child):{name:x.name})};
   }
 
+  // Перетворення отриманих даних у дерево
   const rootData = toTree(data);
-
-  const width = 1000, dx = 10, dy = 180;
-  const tree = d3.tree().nodeSize([dx, dy]);
-  const diagonal = d3.linkHorizontal().x(d => d.y).y(d => d.x);
-
   const root = d3.hierarchy(rootData);
+
+  // Налаштування розмірів дерева
+  const dx = 40;
+  const dy = 120;
+  const tree = d3.tree().nodeSize([dx, dy]);
   tree(root);
 
+  // Обчислення розмірів для viewBox
+  let x0 = Infinity, x1 = -Infinity;
+  root.each(d=>{ if(d.x<x0)x0=d.x; if(d.x>x1)x1=d.x; });
+
+  const width = root.height * dy + 100;
+  const height = x1 - x0 + 100;
+
+  // Створення SVG-контейнера
   const svg = d3.create("svg")
-      .attr("viewBox", [-20, -20, width, Math.max(400, root.height*120)])
+      .attr("width", "100%")
+      .attr("height", "100%")
+      .attr("viewBox", [0, 0, width, height])
       .style("font", "12px sans-serif");
 
   const g = svg.append("g");
 
-  const link = g.append("g")
-      .attr("fill", "none")
-      .attr("stroke", "#555")
-      .selectAll("path")
-      .data(root.links())
-      .join("path")
-      .attr("d", d => diagonal({source: d.source, target: d.target}));
+  // Малювання ліній між вузлами (гілок дерева)
+  g.selectAll(".link")
+    .data(root.links())
+    .join("path")
+    .attr("class","link")
+    .attr("d", d3.linkVertical().x(d=>d.x).y(d=>d.y));
 
-  const node = g.append("g")
-      .selectAll("g")
-      .data(root.descendants())
-      .join("g")
-      .attr("transform", d => `translate(${d.y},${d.x})`);
+  // Малювання самих вузлів (кругів та тексту)
+  const node = g.selectAll(".node")
+    .data(root.descendants())
+    .join("g")
+    .attr("class","node")
+    .attr("transform", d=>`translate(${d.x},${d.y})`);
 
-  node.append("circle").attr("r", 6);
+  node.append("circle").attr("r",6);
   node.append("text")
-      .attr("dy", "0.31em")
-      .attr("x", d => d.children ? -10 : 10)
-      .attr("text-anchor", d => d.children ? "end" : "start")
-      .text(d => d.data.name);
+      .attr("dy","0.31em")
+      .attr("y",d=>d.children?-10:10)
+      .attr("text-anchor","middle")
+      .text(d=>d.data.name);
 
+  // Додавання функціоналу масштабування (zoom)
+  const zoom = d3.zoom()
+    .on("zoom", (event) => {
+      g.attr("transform", event.transform);
+    });
+  
+  svg.call(zoom).call(zoom.transform, d3.zoomIdentity.translate(50, 50 - x0));
+
+  // Додавання SVG до HTML-контейнера
   document.getElementById('chart').appendChild(svg.node());
-}).catch(err=>{
-  document.getElementById('chart').innerText = "Failed to load ast.json: " + err;
 });
 </script>
 </body>

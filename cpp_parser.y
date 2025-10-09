@@ -10,13 +10,18 @@ void yyerror(const char *s);
 int yylex(void);
 %}
 
+%code requires {
+  #include "ast.h"
+}
+
 /* union for semantic values */
 %union {
   double num;
   char* id;
   char* str;
-  ASTNode* node;
-  std::vector<ASTNode*>* node_list;
+  ASTNode* node;                       /* for single AST nodes */
+  std::vector<ASTNode*>* node_list;    /* for lists of AST nodes */
+  TypeDescriptor* typeDesc;            /* for types like int/double/bool/void */
 }
 
 /* tokens */
@@ -48,32 +53,37 @@ int yylex(void);
 %right T_ASSIGN
 %nonassoc T_INC T_DEC
 
-/* nonterminals */
-%type <node> translation_unit declaration decl_list function_defdeclarator
-%type <node> stmt stmt_list compound_stmt expr expression_stmt selection_stmt iteration_stmt jump_stmt
-%type <node> declaration_specifiers init_declarator_list init_declarator
-%type <node> expr assignment_expr conditional_expr logical_or_expr logical_and_expr equality_expr relational_expr additive_expr multiplicative_expr unary_expr postfix_expr primary_expr
-%type <node_list> parameter_list argument_list member_list
+/* ---------- nonterminals (declare types for Bison) ---------- */
+/* одиночні AST вузли (ASTNode*) */
+%type <node> translation_unit declaration init_declarator function_defdeclarator
+%type <node> compound_stmt stmt expression_stmt selection_stmt iteration_stmt jump_stmt
+%type <node> expr assignment_expr conditional_expr logical_or_expr logical_and_expr
+%type <node> equality_expr relational_expr additive_expr multiplicative_expr
+%type <node> unary_expr postfix_expr primary_expr
+
+/* списки (std::vector<ASTNode*>*) */
+%type <node_list> decl_list stmt_list parameter_list parameter_list_nonempty
+%type <node_list> init_declarator_list member_list argument_list argument_list_nonempty
+
+/* спеціальний тип для опису типів (int/double/...) */
+%type <typeDesc> declaration_specifiers
 
 %%
 
 translation_unit:
-    /* zero or more declarations / function definitions / class declarations */
-    decl_list               { ast_root = new BlockStmt($1); }
+    decl_list { $$ = new BlockStmt($1); ast_root = $$; }
 ;
 
 decl_list:
     /* empty */            { $$ = new std::vector<ASTNode*>(); }
   | decl_list declaration { $1->push_back($2); $$ = $1; }
   | decl_list function_defdeclarator { $1->push_back($2); $$ = $1; }
-  | decl_list member_list { /* for top-level class-like members if needed */ $$ = $1; }
+  | decl_list member_list { /* if member_list used at top-level */ $$ = $1; }
 ;
 
 declaration:
     declaration_specifiers init_declarator_list T_SEMI
-        { /* var declarations list */
-          VarDeclList* vlist = new VarDeclList($1, $2); $$ = vlist;
-        }
+        { VarDeclList* vlist = new VarDeclList($1, $2); $$ = vlist; }
   | T_CLASS ID T_LBRACE member_list T_RBRACE T_SEMI
         { $$ = new ClassDecl(std::string($2), $4); free($2); }
 ;
@@ -106,8 +116,10 @@ parameter_list:
 ;
 
 parameter_list_nonempty:
-    declaration_specifiers ID            { $$ = new std::vector<ASTNode*>(); $$->push_back(new ParamDecl($1, std::string($2))); free($2); }
-  | parameter_list_nonempty T_COMMA declaration_specifiers ID { $1->push_back(new ParamDecl($3, std::string($4))); free($4); $$ = $1; }
+    declaration_specifiers ID
+        { $$ = new std::vector<ASTNode*>(); $$->push_back(new ParamDecl($1, std::string($2))); free($2); }
+  | parameter_list_nonempty T_COMMA declaration_specifiers ID
+        { $1->push_back(new ParamDecl($3, std::string($4))); free($4); $$ = $1; }
 ;
 
 member_list:
@@ -117,7 +129,7 @@ member_list:
 ;
 
 compound_stmt:
-    T_LBRACE stmt_list T_RBRACE { /* take block */ $$ = new BlockStmt(*$2); delete $2; }
+    T_LBRACE stmt_list T_RBRACE { $$ = new BlockStmt($2); }
 ;
 
 stmt_list:
