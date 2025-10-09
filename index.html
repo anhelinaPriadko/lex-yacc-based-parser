@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AST Visualization (d3)</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body { font-family: sans-serif; }
+    .node circle { fill: #fff; stroke: steelblue; stroke-width: 2px; }
+    .node text { font: 12px sans-serif; }
+    .link { fill: none; stroke: #ccc; stroke-width: 1.5px; }
+  </style>
+</head>
+<body>
+<h2>AST Visualization</h2>
+<p>If the file <code>ast.json</code> is next to this page, it will be loaded automatically.</p>
+<div id="chart"></div>
+
+<script>
+fetch('ast.json').then(r=>r.json()).then(data=>{
+  // convert our JSON node to d3 hierarchy
+  function toTree(node) {
+    // if node has "left"/"right"/"expr"/"cond"/"then"/"else"/"stmts" etc., create children accordingly
+    const children = [];
+    for (let key of Object.keys(node)) {
+      if (key === "type") continue;
+      const val = node[key];
+      if (Array.isArray(val)) {
+        val.forEach((c,i)=>children.push({name: key + "["+i+"]", child: c}));
+      } else if (typeof val === "object" && val !== null) {
+        children.push({name: key, child: val});
+      } else {
+        children.push({name: key + ": " + String(val)});
+      }
+    }
+    const res = {name: node.type, children: children.map(x=> {
+      if (x.child) return toTree(x.child);
+      else return {name: x.name};
+    })};
+    return res;
+  }
+
+  const rootData = toTree(data);
+
+  const width = 1000, dx = 10, dy = 180;
+  const tree = d3.tree().nodeSize([dx, dy]);
+  const diagonal = d3.linkHorizontal().x(d => d.y).y(d => d.x);
+
+  const root = d3.hierarchy(rootData);
+  tree(root);
+
+  const svg = d3.create("svg")
+      .attr("viewBox", [-20, -20, width, Math.max(400, root.height*120)])
+      .style("font", "12px sans-serif");
+
+  const g = svg.append("g");
+
+  const link = g.append("g")
+      .attr("fill", "none")
+      .attr("stroke", "#555")
+      .selectAll("path")
+      .data(root.links())
+      .join("path")
+      .attr("d", d => diagonal({source: d.source, target: d.target}));
+
+  const node = g.append("g")
+      .selectAll("g")
+      .data(root.descendants())
+      .join("g")
+      .attr("transform", d => `translate(${d.y},${d.x})`);
+
+  node.append("circle").attr("r", 6);
+  node.append("text")
+      .attr("dy", "0.31em")
+      .attr("x", d => d.children ? -10 : 10)
+      .attr("text-anchor", d => d.children ? "end" : "start")
+      .text(d => d.data.name);
+
+  document.getElementById('chart').appendChild(svg.node());
+}).catch(err=>{
+  document.getElementById('chart').innerText = "Failed to load ast.json: " + err;
+});
+</script>
+</body>
+</html>
