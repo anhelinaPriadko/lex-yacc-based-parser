@@ -6,7 +6,11 @@
 #include <string>
 #include "ast.h"     /* доповнений заголовок AST */
 ASTNode* ast_root = nullptr;
-void yyerror(const char *s);
+extern char *yytext;
+extern int yylineno;
+void yyerror(const char *s) {
+    fprintf(stderr, "Parse error at line %d near '%s': %s\n", yylineno, yytext, s);
+}
 int yylex(void);
 %}
 
@@ -108,6 +112,8 @@ init_declarator:
 function_defdeclarator:
     declaration_specifiers ID T_LPAREN parameter_list T_RPAREN compound_stmt
         { $$ = new FunctionDecl($1, std::string($2), $4, dynamic_cast<BlockStmt*>($6)); free($2); }
+  | ID T_LPAREN parameter_list T_RPAREN compound_stmt
+        { $$ = new FunctionDecl(new TypeDescriptor(std::string("ctor")), std::string($1), $3, dynamic_cast<BlockStmt*>($5)); free($1); }
 ;
 
 parameter_list:
@@ -256,8 +262,3 @@ argument_list_nonempty:
 ;
 
 %%
-
-/* error and helper */
-void yyerror(const char *s) {
-    fprintf(stderr, "Parse error: %s\n", s);
-}
