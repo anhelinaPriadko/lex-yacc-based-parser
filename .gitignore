@@ -20,11 +20,12 @@ core
 # Flex / Bison generated sources and headers
 lex.yy.c
 lex.yy.o
-*.tab.c
+cpp_parser.tab.c
+cpp_parser.tab.cpp
+cpp_parser.tab.h
+cpp_parser.tab.hpp
+lex.yy.c
 
-*.tab.h
-*.tab.o
-*.output
 
 # AST output / test artifacts
 ast.json
