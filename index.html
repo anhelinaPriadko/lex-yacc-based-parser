@@ -9,39 +9,22 @@
   body { margin:0; font-family: Arial, Helvetica, sans-serif; background:#fafafa; color:#111; }
   header { padding:12px 16px; border-bottom:1px solid #e6e6e6; display:flex; align-items:center; gap:12px; background: #fff; }
   header h1 { margin:0; font-size:16px; font-weight:600; }
-  #controls { margin-left:auto; display:flex; gap:8px; align-items:center; }
-  button { padding:6px 10px; border-radius:6px; border:1px solid #ccc; background:#fff; cursor:pointer; }
-  #chart { width:100%; height:calc(100vh - 56px); overflow:hidden; background: #fff; }
+  #chart { width:100%; height:calc(100vh - 49px); overflow:hidden; background: #fff; }
   .node circle { fill: #fff; stroke:#2b6cb0; stroke-width:1.6; }
   .node text { font-size:12px; fill:#111; }
   .link { fill:none; stroke:#999; stroke-width:1.2; }
   .muted { color:#666; font-size:13px; margin-left:8px; }
-  footer { padding:8px 12px; font-size:12px; color:#666; }
 </style>
 </head>
 <body>
   <header>
     <h1>AST — simple tree</h1>
     <div class="muted">Дерево повністю розгорнуте. Використовуй колесо миші / свайп для зуму та перетягування для панорамування.</div>
-    <div id="controls">
-      <button id="btnReset">Reset</button>
-      <button id="btnExport">Export SVG</button>
-      <button id="btnReload">Reload AST</button>
-    </div>
   </header>
 
   <div id="chart"></div>
-  <footer>Запускати через HTTP (наприклад: <code>python3 -m http.server 8000</code>), потім відкрити <code>http://localhost:8000/index.html</code></footer>
 
 <script>
-/*
-  Простий, читабельний рендер дерева:
-  - повне розгортання
-  - nodeSize (без наїзду листя)
-  - zoom/pan
-  - adaptive viewBox за розмірами дерева
-*/
-
 // Перетворюємо AST JSON у просту деревоподібну структуру для d3
 function toTree(node) {
   if (node === null) return { name: "null" };
@@ -82,24 +65,16 @@ async function loadAndRender() {
 
 // Основний рендер (простий вертикальний tree)
 function render(rootData) {
-  // clear
   const container = document.getElementById('chart');
   container.innerHTML = '';
 
-  // configuration: control spacing to avoid overlap
-  const nodeWidth = 160;   // горизонтальний простір на вузол
-  const nodeHeight = 60;   // вертикальний простір між рівнями
+  const nodeWidth = 160;
+  const nodeHeight = 60;
 
-  // create d3 hierarchy
   const root = d3.hierarchy(rootData);
-
-  // choose tree layout using nodeSize so leaves don't overlap
   const treeLayout = d3.tree().nodeSize([nodeHeight, nodeWidth]);
-
-  // compute layout
   treeLayout(root);
 
-  // compute bounds
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   root.each(d => {
     if (d.x < minX) minX = d.x;
@@ -108,38 +83,31 @@ function render(rootData) {
     if (d.y > maxY) maxY = d.y;
   });
 
-  // padding
   const margin = { top: 20, right: 40, bottom: 20, left: 40 };
   const width = Math.max(800, (maxY - minY) + margin.left + margin.right);
   const height = Math.max(600, (maxX - minX) + margin.top + margin.bottom);
 
-  // create svg with viewBox
   const svg = d3.create("svg")
     .attr("viewBox", [0, 0, width, height])
     .attr("preserveAspectRatio", "xMidYMid meet")
     .style("width", "100%")
     .style("height", "100%");
 
-  // group with initial transform to center the tree
   const g = svg.append("g").attr("transform", `translate(${margin.left - minY}, ${margin.top - minX})`);
 
-  // links
   g.append("g")
     .selectAll("path")
     .data(root.links())
     .join("path")
     .attr("class", "link")
     .attr("d", d => {
-      // cubic bezier for smoother links
       const sx = d.source.x, sy = d.source.y;
       const tx = d.target.x, ty = d.target.y;
-      const mx = (sx + tx) / 2;
       return `M ${sy} ${sx} C ${sy + (ty - sy) * 0.5} ${sx}, ${ty - (ty - sy) * 0.5} ${tx}, ${ty} ${tx}`;
     })
     .attr("stroke", "#999")
     .attr("fill", "none");
 
-  // nodes
   const nodeG = g.append("g")
     .selectAll("g")
     .data(root.descendants())
@@ -147,10 +115,8 @@ function render(rootData) {
     .attr("class", "node")
     .attr("transform", d => `translate(${d.y},${d.x})`);
 
-  // circle
   nodeG.append("circle").attr("r", 6).attr("fill", "#fff").attr("stroke", "#2b6cb0").attr("stroke-width", 1.6);
 
-  // text (type)
   nodeG.append("text")
     .attr("x", 10)
     .attr("y", 4)
@@ -158,53 +124,24 @@ function render(rootData) {
     .style("font-size", "12px")
     .style("fill", "#111");
 
-  // tooltip on hover: show trimmed JSON snippet
   nodeG.append("title").text(d => {
     try {
       return JSON.stringify(d.data._raw || d.data, null, 2).slice(0, 800);
     } catch (e) { return d.data.name; }
   });
 
-  // zoom & pan
   const zoom = d3.zoom().scaleExtent([0.2, 3]).on("zoom", (event) => {
     g.attr("transform", event.transform);
   });
   svg.call(zoom);
 
-  // append svg to container
   container.appendChild(svg.node());
 
-  // center and fit: compute initial transform to center the tree
-  // translate so root roughly in left-third and vertically centered
   const initialScale = 1;
   const tx = 20;
   const ty = 0;
   svg.transition().duration(600).call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(initialScale));
 }
-
-// Export SVG
-function exportSVG() {
-  const svgNode = document.querySelector('#chart svg');
-  if (!svgNode) return alert('SVG ще не готовий');
-  const serializer = new XMLSerializer();
-  const s = serializer.serializeToString(svgNode);
-  const blob = new Blob([s], { type: "image/svg+xml;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'ast-tree.svg';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
-
-// Controls
-document.getElementById('btnReload').addEventListener('click', loadAndRender);
-document.getElementById('btnExport').addEventListener('click', exportSVG);
-document.getElementById('btnReset').addEventListener('click', () => {
-  const svg = d3.select('#chart svg');
-  if (!svg.empty()) svg.transition().duration(400).call(d3.zoom().transform, d3.zoomIdentity);
-});
 
 // start
 loadAndRender();
