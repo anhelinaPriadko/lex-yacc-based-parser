@@ -13,17 +13,18 @@
 a.out
 parser
 *.out
-*.tab.*
+*.tab.cpp
 core
+.vs
 
 # Flex / Bison generated sources and headers
 lex.yy.c
 lex.yy.o
-cpp_parser.tab.c
-cpp_parser.tab.cpp
-cpp_parser.tab.h
-cpp_parser.tab.o
-cpp_parser.output
+*.tab.c
+
+*.tab.h
+*.tab.o
+*.output
 
 # AST output / test artifacts
 ast.json

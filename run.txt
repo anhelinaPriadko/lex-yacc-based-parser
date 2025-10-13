@@ -1,5 +1,4 @@
 make clean 
 make
 ./parser test.cpp
-# з тієї ж папки, де index.html і ast.json
 python3 -m http.server 8000
