@@ -1,11 +1,85 @@
-# Об'єктні файли
+# -------------------------
+# Build artifacts (C/C++)
+# -------------------------
+# object files, binaries, temporary generated C files from flex/bison
 *.o
-
-# Згенеровані файли Flex та Bison
-lex.yy.c
-cpp_parser.tab.c
-cpp_parser.tab.h
-cpp_parser.tab.hpp
-
-# Виконавчі файли (parser)
+*.obj
+*.so
+*.a
+*.lo
+*.la
+*.dll
+*.exe
+a.out
 parser
+*.out
+*.tab.*
+core
+
+# Flex / Bison generated sources and headers
+lex.yy.c
+lex.yy.o
+cpp_parser.tab.c
+cpp_parser.tab.cpp
+cpp_parser.tab.h
+cpp_parser.tab.o
+cpp_parser.output
+
+# AST output / test artifacts
+ast.json
+*.dot
+
+# build dirs
+build/
+dist/
+bin/
+obj/
+
+# -------------------------
+# Editor / OS files
+# -------------------------
+# Vim/vi swap
+.*.swp
+*.swp
+# Emacs
+*~
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+# Thumbs, desktop.ini
+Thumbs.db
+desktop.ini
+
+# IDEs
+.vscode/
+.idea/
+*.iml
+
+# JetBrains caches
+out/
+.gradle/
+
+# Python artifacts (if using helper scripts)
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Logs, temp
+*.log
+*.tmp
+*.temp
+
+# npm / node stuff (if any)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Archives
+*.zip
+*.tar.gz
+*.tgz
+
+# Ignore local configuration files
+.env
+.local

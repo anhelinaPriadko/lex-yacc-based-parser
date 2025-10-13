@@ -1,97 +1,213 @@
 <!doctype html>
-<html>
+<html lang="uk">
 <head>
-<meta charset="utf-8">
-<title>AST Visualization (d3)</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AST ‚Äî Simple Tree</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
-  body { font-family: serif; }
-  #chart { width: 100%; height: 90vh; overflow: auto; border: 1px solid #ccc; }
-  .node circle { fill: #fff; stroke: steelblue; stroke-width: 2px; }
-  .node text { font: 12px sans-serif; }
-  .link { fill: none; stroke: #ccc; stroke-width: 1.5px; }
+  body { margin:0; font-family: Arial, Helvetica, sans-serif; background:#fafafa; color:#111; }
+  header { padding:12px 16px; border-bottom:1px solid #e6e6e6; display:flex; align-items:center; gap:12px; background: #fff; }
+  header h1 { margin:0; font-size:16px; font-weight:600; }
+  #controls { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  button { padding:6px 10px; border-radius:6px; border:1px solid #ccc; background:#fff; cursor:pointer; }
+  #chart { width:100%; height:calc(100vh - 56px); overflow:hidden; background: #fff; }
+  .node circle { fill: #fff; stroke:#2b6cb0; stroke-width:1.6; }
+  .node text { font-size:12px; fill:#111; }
+  .link { fill:none; stroke:#999; stroke-width:1.2; }
+  .muted { color:#666; font-size:13px; margin-left:8px; }
+  footer { padding:8px 12px; font-size:12px; color:#666; }
 </style>
 </head>
 <body>
-<h2>AST Visualization</h2>
-<div id="chart"></div>
+  <header>
+    <h1>AST ‚Äî simple tree</h1>
+    <div class="muted">–î–µ—Ä–µ–≤–æ –ø–æ–≤–Ω—ñ—Å—Ç—é —Ä–æ–∑–≥–æ—Ä–Ω—É—Ç–µ. –í–∏–∫–æ—Ä–∏—Å—Ç–æ–≤—É–π –∫–æ–ª–µ—Å–æ –º–∏—à—ñ / —Å–≤–∞–π–ø –¥–ª—è –∑—É–º—É —Ç–∞ –ø–µ—Ä–µ—Ç—è–≥—É–≤–∞–Ω–Ω—è –¥–ª—è –ø–∞–Ω–æ—Ä–∞–º—É–≤–∞–Ω–Ω—è.</div>
+    <div id="controls">
+      <button id="btnReset">Reset</button>
+      <button id="btnExport">Export SVG</button>
+      <button id="btnReload">Reload AST</button>
+    </div>
+  </header>
+
+  <div id="chart"></div>
+  <footer>–ó–∞–ø—É—Å–∫–∞—Ç–∏ —á–µ—Ä–µ–∑ HTTP (–Ω–∞–ø—Ä–∏–∫–ª–∞–¥: <code>python3 -m http.server 8000</code>), –ø–æ—Ç—ñ–º –≤—ñ–¥–∫—Ä–∏—Ç–∏ <code>http://localhost:8000/index.html</code></footer>
 
 <script>
-fetch('ast.json').then(r => r.json()).then(data => {
-  // ‘ÛÌÍˆ≥ˇ ‰Îˇ ÔÂÂÚ‚ÓÂÌÌˇ JSON-‰‡ÌËı Û ÒÚÛÍÚÛÛ, ˇÍÛ ÓÁÛÏ≥∫ D3.js
-  function toTree(node) {
-    const children = [];
-    for (let key of Object.keys(node)) {
-      if (key === "type") continue;
-      const val = node[key];
-      // Œ·Ó·Í‡ Ï‡ÒË‚≥‚, ˘Ó· ÍÓÊÂÌ ÂÎÂÏÂÌÚ ÒÚ‡‚ ÓÍÂÏËÏ ‚ÛÁÎÓÏ
-      if (Array.isArray(val)) val.forEach((c,i) => children.push({name:key+"["+i+"]",child:c}));
-      // Œ·Ó·Í‡ ‚ÍÎ‡‰ÂÌËı Ó·'∫ÍÚ≥‚
-      else if (typeof val==="object" && val!==null) children.push({name:key,child:val});
-      // Œ·Ó·Í‡ ÔÓÒÚËı ÁÌ‡˜ÂÌ¸ (ÒÚÓÍË, ˜ËÒÎ‡ ÚÓ˘Ó)
-      else children.push({name:key+": "+String(val)});
-    }
-    return {name: node.type, children: children.map(x=>x.child?toTree(x.child):{name:x.name})};
-  }
+/*
+  –ü—Ä–æ—Å—Ç–∏–π, —á–∏—Ç–∞–±–µ–ª—å–Ω–∏–π —Ä–µ–Ω–¥–µ—Ä –¥–µ—Ä–µ–≤–∞:
+  - –ø–æ–≤–Ω–µ —Ä–æ–∑–≥–æ—Ä—Ç–∞–Ω–Ω—è
+  - nodeSize (–±–µ–∑ –Ω–∞—ó–∑–¥—É –ª–∏—Å—Ç—è)
+  - zoom/pan
+  - adaptive viewBox –∑–∞ —Ä–æ–∑–º—ñ—Ä–∞–º–∏ –¥–µ—Ä–µ–≤–∞
+*/
 
-  // œÂÂÚ‚ÓÂÌÌˇ ÓÚËÏ‡ÌËı ‰‡ÌËı Û ‰ÂÂ‚Ó
-  const rootData = toTree(data);
+// –ü–µ—Ä–µ—Ç–≤–æ—Ä—é—î–º–æ AST JSON —É –ø—Ä–æ—Å—Ç—É –¥–µ—Ä–µ–≤–æ–ø–æ–¥—ñ–±–Ω—É —Å—Ç—Ä—É–∫—Ç—É—Ä—É –¥–ª—è d3
+function toTree(node) {
+  if (node === null) return { name: "null" };
+  if (typeof node !== "object") return { name: String(node) };
+  const nodetype = node.type || "Object";
+  const children = [];
+  for (const key of Object.keys(node)) {
+    if (key === "type") continue;
+    const val = node[key];
+    if (Array.isArray(val)) {
+      val.forEach((c, i) => {
+        if (c && typeof c === "object") children.push({ name: `${key}[${i}]`, raw: c });
+        else children.push({ name: `${key}[${i}]: ${String(c)}` });
+      });
+    } else if (val && typeof val === "object") {
+      children.push({ name: key, raw: val });
+    } else {
+      children.push({ name: `${key}: ${String(val)}` });
+    }
+  }
+  const childTrees = children.map(ch => ch.raw ? toTree(ch.raw) : { name: ch.name });
+  return { name: nodetype, children: childTrees.length ? childTrees : undefined, _raw: node };
+}
+
+// –ê—Å–∏–Ω—Ö—Ä–æ–Ω–Ω–µ –∑–∞–≤–∞–Ω—Ç–∞–∂–µ–Ω–Ω—è —Ç–∞ —Ä–µ–Ω–¥–µ—Ä
+async function loadAndRender() {
+  try {
+    const res = await fetch('ast.json', { cache: "no-store" });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const tree = toTree(data);
+    render(tree);
+  } catch (err) {
+    document.getElementById('chart').innerHTML = '<div style="padding:20px;color:#900">–ù–µ –≤–¥–∞–ª–æ—Å—è –∑–∞–≤–∞–Ω—Ç–∞–∂–∏—Ç–∏ ast.json: ' + err.message + '</div>';
+    console.error(err);
+  }
+}
+
+// –û—Å–Ω–æ–≤–Ω–∏–π —Ä–µ–Ω–¥–µ—Ä (–ø—Ä–æ—Å—Ç–∏–π –≤–µ—Ä—Ç–∏–∫–∞–ª—å–Ω–∏–π tree)
+function render(rootData) {
+  // clear
+  const container = document.getElementById('chart');
+  container.innerHTML = '';
+
+  // configuration: control spacing to avoid overlap
+  const nodeWidth = 160;   // –≥–æ—Ä–∏–∑–æ–Ω—Ç–∞–ª—å–Ω–∏–π –ø—Ä–æ—Å—Ç—ñ—Ä –Ω–∞ –≤—É–∑–æ–ª
+  const nodeHeight = 60;   // –≤–µ—Ä—Ç–∏–∫–∞–ª—å–Ω–∏–π –ø—Ä–æ—Å—Ç—ñ—Ä –º—ñ–∂ —Ä—ñ–≤–Ω—è–º–∏
+
+  // create d3 hierarchy
   const root = d3.hierarchy(rootData);
 
-  // Õ‡Î‡¯ÚÛ‚‡ÌÌˇ ÓÁÏ≥≥‚ ‰ÂÂ‚‡
-  const dx = 40;
-  const dy = 120;
-  const tree = d3.tree().nodeSize([dx, dy]);
-  tree(root);
+  // choose tree layout using nodeSize so leaves don't overlap
+  const treeLayout = d3.tree().nodeSize([nodeHeight, nodeWidth]);
 
-  // Œ·˜ËÒÎÂÌÌˇ ÓÁÏ≥≥‚ ‰Îˇ viewBox
-  let x0 = Infinity, x1 = -Infinity;
-  root.each(d=>{ if(d.x<x0)x0=d.x; if(d.x>x1)x1=d.x; });
+  // compute layout
+  treeLayout(root);
 
-  const width = root.height * dy + 100;
-  const height = x1 - x0 + 100;
+  // compute bounds
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  root.each(d => {
+    if (d.x < minX) minX = d.x;
+    if (d.x > maxX) maxX = d.x;
+    if (d.y < minY) minY = d.y;
+    if (d.y > maxY) maxY = d.y;
+  });
 
-  // —Ú‚ÓÂÌÌˇ SVG-ÍÓÌÚÂÈÌÂ‡
+  // padding
+  const margin = { top: 20, right: 40, bottom: 20, left: 40 };
+  const width = Math.max(800, (maxY - minY) + margin.left + margin.right);
+  const height = Math.max(600, (maxX - minX) + margin.top + margin.bottom);
+
+  // create svg with viewBox
   const svg = d3.create("svg")
-      .attr("width", "100%")
-      .attr("height", "100%")
-      .attr("viewBox", [0, 0, width, height])
-      .style("font", "12px sans-serif");
+    .attr("viewBox", [0, 0, width, height])
+    .attr("preserveAspectRatio", "xMidYMid meet")
+    .style("width", "100%")
+    .style("height", "100%");
 
-  const g = svg.append("g");
+  // group with initial transform to center the tree
+  const g = svg.append("g").attr("transform", `translate(${margin.left - minY}, ${margin.top - minX})`);
 
-  // Ã‡Î˛‚‡ÌÌˇ Î≥Ì≥È Ï≥Ê ‚ÛÁÎ‡ÏË („≥ÎÓÍ ‰ÂÂ‚‡)
-  g.selectAll(".link")
+  // links
+  g.append("g")
+    .selectAll("path")
     .data(root.links())
     .join("path")
-    .attr("class","link")
-    .attr("d", d3.linkVertical().x(d=>d.x).y(d=>d.y));
+    .attr("class", "link")
+    .attr("d", d => {
+      // cubic bezier for smoother links
+      const sx = d.source.x, sy = d.source.y;
+      const tx = d.target.x, ty = d.target.y;
+      const mx = (sx + tx) / 2;
+      return `M ${sy} ${sx} C ${sy + (ty - sy) * 0.5} ${sx}, ${ty - (ty - sy) * 0.5} ${tx}, ${ty} ${tx}`;
+    })
+    .attr("stroke", "#999")
+    .attr("fill", "none");
 
-  // Ã‡Î˛‚‡ÌÌˇ Ò‡ÏËı ‚ÛÁÎ≥‚ (ÍÛ„≥‚ Ú‡ ÚÂÍÒÚÛ)
-  const node = g.selectAll(".node")
+  // nodes
+  const nodeG = g.append("g")
+    .selectAll("g")
     .data(root.descendants())
     .join("g")
-    .attr("class","node")
-    .attr("transform", d=>`translate(${d.x},${d.y})`);
+    .attr("class", "node")
+    .attr("transform", d => `translate(${d.y},${d.x})`);
 
-  node.append("circle").attr("r",6);
-  node.append("text")
-      .attr("dy","0.31em")
-      .attr("y",d=>d.children?-10:10)
-      .attr("text-anchor","middle")
-      .text(d=>d.data.name);
+  // circle
+  nodeG.append("circle").attr("r", 6).attr("fill", "#fff").attr("stroke", "#2b6cb0").attr("stroke-width", 1.6);
 
-  // ƒÓ‰‡‚‡ÌÌˇ ÙÛÌÍˆ≥ÓÌ‡ÎÛ Ï‡Ò¯Ú‡·Û‚‡ÌÌˇ (zoom)
-  const zoom = d3.zoom()
-    .on("zoom", (event) => {
-      g.attr("transform", event.transform);
-    });
-  
-  svg.call(zoom).call(zoom.transform, d3.zoomIdentity.translate(50, 50 - x0));
+  // text (type)
+  nodeG.append("text")
+    .attr("x", 10)
+    .attr("y", 4)
+    .text(d => d.data.name)
+    .style("font-size", "12px")
+    .style("fill", "#111");
 
-  // ƒÓ‰‡‚‡ÌÌˇ SVG ‰Ó HTML-ÍÓÌÚÂÈÌÂ‡
-  document.getElementById('chart').appendChild(svg.node());
+  // tooltip on hover: show trimmed JSON snippet
+  nodeG.append("title").text(d => {
+    try {
+      return JSON.stringify(d.data._raw || d.data, null, 2).slice(0, 800);
+    } catch (e) { return d.data.name; }
+  });
+
+  // zoom & pan
+  const zoom = d3.zoom().scaleExtent([0.2, 3]).on("zoom", (event) => {
+    g.attr("transform", event.transform);
+  });
+  svg.call(zoom);
+
+  // append svg to container
+  container.appendChild(svg.node());
+
+  // center and fit: compute initial transform to center the tree
+  // translate so root roughly in left-third and vertically centered
+  const initialScale = 1;
+  const tx = 20;
+  const ty = 0;
+  svg.transition().duration(600).call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(initialScale));
+}
+
+// Export SVG
+function exportSVG() {
+  const svgNode = document.querySelector('#chart svg');
+  if (!svgNode) return alert('SVG —â–µ –Ω–µ –≥–æ—Ç–æ–≤–∏–π');
+  const serializer = new XMLSerializer();
+  const s = serializer.serializeToString(svgNode);
+  const blob = new Blob([s], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'ast-tree.svg';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+// Controls
+document.getElementById('btnReload').addEventListener('click', loadAndRender);
+document.getElementById('btnExport').addEventListener('click', exportSVG);
+document.getElementById('btnReset').addEventListener('click', () => {
+  const svg = d3.select('#chart svg');
+  if (!svg.empty()) svg.transition().duration(400).call(d3.zoom().transform, d3.zoomIdentity);
 });
+
+// start
+loadAndRender();
 </script>
 </body>
 </html>
