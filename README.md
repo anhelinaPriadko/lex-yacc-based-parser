@@ -6,7 +6,7 @@ The resulting `ast.json` file can be visualized using **D3.js** in the provided 
 
 ---
 
-## 🚀 How to Run
+## How to Run
 
 ### 1. Build the project
 Make sure you have **Flex**, **Bison**, and **g++** installed.  
@@ -15,3 +15,8 @@ Then open the terminal in the project folder and run:
 ```bash
 make clear
 make
+
+### 2. Build the project
+Run parser executable to generate ast.json with the result
+```bash
+./parser test.cpp

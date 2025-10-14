@@ -25,7 +25,6 @@
   <div id="chart"></div>
 
 <script>
-// Перетворюємо AST JSON у просту деревоподібну структуру для d3
 function toTree(node) {
   if (node === null) return { name: "null" };
   if (typeof node !== "object") return { name: String(node) };
@@ -49,7 +48,6 @@ function toTree(node) {
   return { name: nodetype, children: childTrees.length ? childTrees : undefined, _raw: node };
 }
 
-// Асинхронне завантаження та рендер
 async function loadAndRender() {
   try {
     const res = await fetch('ast.json', { cache: "no-store" });
@@ -63,7 +61,6 @@ async function loadAndRender() {
   }
 }
 
-// Основний рендер (простий вертикальний tree)
 function render(rootData) {
   const container = document.getElementById('chart');
   container.innerHTML = '';
@@ -143,7 +140,6 @@ function render(rootData) {
   svg.transition().duration(600).call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(initialScale));
 }
 
-// start
 loadAndRender();
 </script>
 </body>

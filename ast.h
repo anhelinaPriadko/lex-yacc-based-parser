@@ -5,13 +5,11 @@
 #include <iomanip>
 #include <algorithm>
 
-// Базовий вузол AST
 struct ASTNode {
     virtual ~ASTNode() = default;
     virtual std::string toJson(int indent = 0) const = 0;
 };
 
-// Помічники для JSON
 static inline std::string indentStr(int n) { return std::string(n, ' '); }
 static inline std::string jsonEsc(const std::string& s) {
     std::ostringstream o;
@@ -27,14 +25,11 @@ static inline std::string jsonEsc(const std::string& s) {
     return o.str();
 }
 
-// Проста дескриптор типу
 struct TypeDescriptor {
     std::string name;
     TypeDescriptor(const std::string& n) : name(n) {}
     std::string toJson() const { return "\"" + jsonEsc(name) + "\""; }
 };
-
-// --- прості вирази / стейтменти (вже були, трохи перероблені) ---
 
 struct NumberExpr : ASTNode {
     double value;
@@ -160,7 +155,7 @@ struct ConditionalExpr : ASTNode {
 // --- statements ---
 
 struct ExprStmt : ASTNode {
-    ASTNode* expr; // may be nullptr for ';'
+    ASTNode* expr;
     ExprStmt(ASTNode* e) : expr(e) {}
     ~ExprStmt() { if (expr) delete expr; }
     std::string toJson(int indent = 0) const override {
@@ -215,7 +210,6 @@ struct IfStmt : ASTNode {
 struct BlockStmt : ASTNode {
     std::vector<ASTNode*> stmts;
     BlockStmt() = default;
-    // конструктор з передачі вказівника на vector (Bison дії використовують new std::vector...)
     BlockStmt(std::vector<ASTNode*>* v) {
         if (v) { stmts = *v; delete v; }
     }
@@ -232,7 +226,6 @@ struct BlockStmt : ASTNode {
     }
 };
 
-// Switch / Loop / For / While
 struct SwitchStmt : ASTNode {
     ASTNode* expr;
     BlockStmt* body;
@@ -299,7 +292,7 @@ struct ContinueStmt : ASTNode {
     std::string toJson(int indent = 0) const override { return indentStr(indent) + std::string("{ \"type\": \"Continue\" }"); }
 };
 struct ReturnStmt : ASTNode {
-    ASTNode* expr; // may be null
+    ASTNode* expr;
     ReturnStmt(ASTNode* e = nullptr) : expr(e) {}
     ~ReturnStmt() { if (expr) delete expr; }
     std::string toJson(int indent = 0) const override {
@@ -314,7 +307,7 @@ struct ReturnStmt : ASTNode {
 
 struct VarDecl : ASTNode {
     std::string id;
-    ASTNode* init; // may be null
+    ASTNode* init;
     VarDecl(const std::string& i, ASTNode* e) : id(i), init(e) {}
     ~VarDecl() { if (init) delete init; }
     std::string toJson(int indent = 0) const override {
@@ -329,7 +322,7 @@ struct VarDecl : ASTNode {
 
 struct VarDeclList : ASTNode {
     TypeDescriptor* baseType;
-    std::vector<ASTNode*> decls; // VarDecl*
+    std::vector<ASTNode*> decls;
     VarDeclList(TypeDescriptor* t, std::vector<ASTNode*>* v) : baseType(t) {
         if (v) { decls = *v; delete v; }
     }
@@ -361,7 +354,7 @@ struct ParamDecl : ASTNode {
 struct FunctionDecl : ASTNode {
     TypeDescriptor* ret;
     std::string name;
-    std::vector<ASTNode*> params; // ParamDecl*
+    std::vector<ASTNode*> params;
     BlockStmt* body;
     FunctionDecl(TypeDescriptor* r, const std::string& n, std::vector<ASTNode*>* p, BlockStmt* b) : ret(r), name(n), body(b) {
         if (p) { params = *p; delete p; }

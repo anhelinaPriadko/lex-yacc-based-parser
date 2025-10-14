@@ -1,10 +1,10 @@
-/* cpp_parser.y Ч Bison (Yacc) grammar for an extended C++-subset */
+/* cpp_parser.y Bison (Yacc) grammar for an extended C++-subset */
 %{
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <string>
-#include "ast.h"     /* доповнений заголовок AST */
+#include "ast.h"     
 ASTNode* ast_root = nullptr;
 extern char *yytext;
 extern int yylineno;
@@ -58,18 +58,17 @@ int yylex(void);
 %nonassoc T_INC T_DEC
 
 /* ---------- nonterminals (declare types for Bison) ---------- */
-/* одиночн≥ AST вузли (ASTNode*) */
 %type <node> translation_unit declaration init_declarator function_defdeclarator
 %type <node> compound_stmt stmt expression_stmt selection_stmt iteration_stmt jump_stmt
 %type <node> expr assignment_expr conditional_expr logical_or_expr logical_and_expr
 %type <node> equality_expr relational_expr additive_expr multiplicative_expr
 %type <node> unary_expr postfix_expr primary_expr
 
-/* списки (std::vector<ASTNode*>*) */
+/*(std::vector<ASTNode*>*) */
 %type <node_list> decl_list stmt_list parameter_list parameter_list_nonempty
 %type <node_list> init_declarator_list member_list argument_list argument_list_nonempty
 
-/* спец≥альний тип дл€ опису тип≥в (int/double/...) */
+/*(int/double/...) */
 %type <typeDesc> declaration_specifiers
 
 %%
