@@ -9,11 +9,11 @@ ASTNode* ast_root = nullptr;
 extern char *yytext;
 extern int yylineno;
 void yyerror(const char *s) {
+    if (!yytext) yytext = (char*)"<no token>";
     fprintf(stderr, "Parse error at line %d near '%s': %s\n", yylineno, yytext, s);
 }
 int yylex(void);
 %}
-
 %code requires {
   #include "ast.h"
 }
@@ -44,7 +44,6 @@ int yylex(void);
 %token T_EQ T_NEQ T_LT T_GT T_LE T_GE
 %token T_AND T_OR T_NOT
 %token T_DOT
-%token T_PRINT
 
 /* operator precedence (from low to high) */
 %left T_OR

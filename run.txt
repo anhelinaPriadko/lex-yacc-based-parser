@@ -2,3 +2,11 @@ make clean
 make
 ./parser test.cpp
 python3 -m http.server 8000
+
+
+вирішити питання з int main
+і чому помилки не коректно вказуються
+і генерація коду
+
+gcc out.c -o out_prog -lm
+./out_prog

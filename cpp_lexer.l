@@ -2,6 +2,9 @@
 #include "cpp_parser.tab.h"
 #include <cstring>
 #include <cstdlib>
+#include <cstdio>
+extern int yylineno;
+void yyerror(const char *s);
 %}
 
 DIGIT   [0-9]
@@ -11,9 +14,15 @@ STRING  \"([^\\\"]|\\.)*\"
 
 %%
 
-{WS}                 { /* skip whitespace */ }
+{WS}                 {
+                        // підрахунок нових рядків щоб yylineno був коректним
+                        for (char *p = yytext; *p; ++p) if (*p == '\n') ++yylineno;
+                      }
 "//".*               { /* line comment */ }
-\/\*([^*]|\*+[^*/])*\*+\/   { /* block comment */ }
+\/\*([^*]|\*+[^*/])*\*+\/   {
+                        // block comment - підрахуємо перенос рядків в ньому
+                        for (char *p = yytext; *p; ++p) if (*p == '\n') ++yylineno;
+                      }
 
 "int"                { return T_INT; }
 "double"             { return T_DOUBLE; }
@@ -34,8 +43,6 @@ STRING  \"([^\\\"]|\\.)*\"
 "default"            { return T_DEFAULT; }
 "public"             { return T_PUBLIC; }
 "private"            { return T_PRIVATE; }
-"print"              { return T_PRINT; }
-
 "=="                 { return T_EQ; }
 "!="                 { return T_NEQ; }
 "<="                 { return T_LE; }
@@ -65,7 +72,15 @@ STRING  \"([^\\\"]|\\.)*\"
 "{"                  { return T_LBRACE; }
 "}"                  { return T_RBRACE; }
 
-{STRING}             { yylval.str = strdup(yytext); return STRING; }
+{STRING}             { 
+                        // збережемо рядок без навколишніх лапок
+                        std::string s(yytext);
+                        if (s.size() >= 2 && s.front() == '"' && s.back() == '"') {
+                            s = s.substr(1, s.size()-2);
+                        }
+                        yylval.str = strdup(s.c_str()); 
+                        return STRING; 
+                      }
 
 {DIGIT}+("."{DIGIT}*)?([eE][+-]?{DIGIT}+)?  {
                         yylval.num = atof(yytext); return NUMBER;
@@ -73,7 +88,11 @@ STRING  \"([^\\\"]|\\.)*\"
 
 {ID}                 { yylval.id = strdup(yytext); return ID; }
 
-.                    { /* unknown char — skip or return as error */ }
+.                    {
+                        // неочікуваний символ — виведемо повідомлення з номером рядка
+                        fprintf(stderr, "Lex error at line %d: unexpected character '%s'\n", yylineno, yytext);
+                        /* пропустимо його */
+                      }
 %%
 
 int yywrap(void) { return 1; }
